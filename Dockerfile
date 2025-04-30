@@ -18,7 +18,10 @@ RUN apt-get update --fix-missing && \
         libncurses5-dev \
         pkg-config \
         wget \
-        zlib1g-dev
+        zlib1g-dev \
+        gfortran \
+        libopenblas-dev \
+        liblapack-dev
 
 # Add deadsnakes PPA for legacy Python versions
 RUN add-apt-repository ppa:deadsnakes/ppa -y && \
@@ -47,10 +50,10 @@ RUN wget https://github.com/Illumina/hap.py/archive/refs/tags/v0.3.14.tar.gz && 
     tar -xvzf v0.3.14.tar.gz && \
     mv hap.py-0.3.14 hap.py-0.3.14-src && \
     mkdir -p hap.py-0.3.14
-WORKDIR /opt/hap.py-0.3.14
-RUN python2 install.py /opt/hap.py-0.3.14 --no-tests && \
-    cd .. && \
-    rm -rf v0.3.14.tar.gz hap.py-0.3.14-src
+WORKDIR /opt/hap.py-0.3.14-src
+RUN python2 install.py /opt/hap.py-0.3.14 --no-tests 
+WORKDIR /opt
+RUN rm -rf v0.3.14.tar.gz hap.py-0.3.14-src
 
 # Cleanup build dependencies
 RUN apt-get remove -y \
@@ -65,7 +68,10 @@ RUN apt-get remove -y \
     cython \
     libbz2-dev \
     libncurses5-dev \
-	pkg-config && \
+	pkg-config \
+    gfortran \
+    libopenblas-dev \
+    liblapack-dev && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
