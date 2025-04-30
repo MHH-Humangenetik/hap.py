@@ -1,9 +1,13 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
-RUN apt-get update && \
+# Update Ubuntu repositories and install basic dependencies, including software-properties-common for add-apt-repository
+RUN apt-get update --fix-missing && \
     apt-get install -y \
+        software-properties-common \
         autoconf \
         build-essential \
         bzip2 \
@@ -12,52 +16,56 @@ RUN apt-get update && \
         git \
         libbz2-dev \
         libncurses5-dev \
-        openjdk-8-jdk \
-        pkg-config \                    
-        python \
-        python2.7 \
-        python2.7-dev \                    
-        python-setuptools \
-        python-pip \
-        python-psutil \                    
-        python-numpy \
-        python-pandas \
-        python-distribute \
-        python-pysam \
-        python-scipy \                    
-        software-properties-common \
+        pkg-config \
         wget \
-        zlib1g-dev && \
-    apt-get clean -y
+        zlib1g-dev
 
-RUN pip install bx-python
+# Add deadsnakes PPA for legacy Python versions
+RUN add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update --fix-missing
 
-# copy git repository into the image
-RUN mkdir -p /opt/hap.py-source
-COPY . /opt/hap.py-source/
+# Install Python 2.7 and its dependencies
+RUN apt-get install -y \
+    python2.7 \
+    python2.7-dev \
+    python-setuptools \
+    python-psutil \
+    python-numpy \
+    python-pysam
 
-# make minimal HG19 reference sequence
-RUN mkdir -p /opt/hap.py-data
+# Install pip for Python 2 using get-pip.py
+RUN wget https://bootstrap.pypa.io/pip/2.7/get-pip.py && \
+    python2 get-pip.py && \
+    rm get-pip.py
 
-# download HG19 reference data
-WORKDIR /opt/hap.py-data
+# Use pip2 to install Python 2 packages
+RUN pip2 install pandas==0.24.2 scipy bx-python
 
-# get + install ant
+# Download and install hap.py
 WORKDIR /opt
-RUN wget http://archive.apache.org/dist/ant/binaries/apache-ant-1.9.7-bin.tar.gz && \
-    tar xzf apache-ant-1.9.7-bin.tar.gz && \
-    rm apache-ant-1.9.7-bin.tar.gz
-ENV PATH $PATH:/opt/apache-ant-1.9.7/bin
+RUN wget https://github.com/Illumina/hap.py/archive/refs/tags/v0.3.14.tar.gz && \
+    tar -xvzf v0.3.14.tar.gz && \
+    mv hap.py-0.3.14 hap.py-0.3.14-src && \
+    mkdir -p hap.py-0.3.14
+WORKDIR /opt/hap.py-0.3.14
+RUN python2 install.py /opt/hap.py-0.3.14 --no-tests && \
+    cd .. && \
+    rm -rf v0.3.14.tar.gz hap.py-0.3.14-src
 
-# run hap.py installer in the image, don't run tests since we don't have a reference file
-WORKDIR /opt/hap.py-source
-RUN python install.py /opt/hap.py --with-rtgtools --no-tests
-WORKDIR /opt/hap.py
-
-# run basic tests
-RUN bin/test_haplotypes
-
-# remove source folder
-WORKDIR /
-RUN rm -rf /opt/hap.py-source
-
+# Cleanup build dependencies
+RUN apt-get remove -y \
+    wget \
+	software-properties-common \
+	zlib1g-dev \
+    git \
+    build-essential \
+    bzip2 \
+    autoconf \
+    cmake \
+    cython \
+    libbz2-dev \
+    libncurses5-dev \
+	pkg-config && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
