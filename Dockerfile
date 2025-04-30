@@ -21,7 +21,8 @@ RUN apt-get update --fix-missing && \
         zlib1g-dev \
         gfortran \
         libopenblas-dev \
-        liblapack-dev
+        liblapack-dev \
+        libboost-all-dev
 
 # Add deadsnakes PPA for legacy Python versions
 RUN add-apt-repository ppa:deadsnakes/ppa -y && \
@@ -51,7 +52,7 @@ RUN wget https://github.com/Illumina/hap.py/archive/refs/tags/v0.3.14.tar.gz && 
     mv hap.py-0.3.14 hap.py-0.3.14-src && \
     mkdir -p hap.py-0.3.14
 WORKDIR /opt/hap.py-0.3.14-src
-RUN python2 install.py /opt/hap.py-0.3.14 --no-tests 
+RUN python2 install.py /opt/hap.py-0.3.14 --no-tests --boost-root /usr/include/boost
 WORKDIR /opt
 RUN rm -rf v0.3.14.tar.gz hap.py-0.3.14-src
 
